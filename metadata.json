@@ -1,0 +1,6 @@
+{
+  "name": "Gesture Starfield",
+  "description": "Control a real-time particle starfield using hand gestures via your webcam.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
