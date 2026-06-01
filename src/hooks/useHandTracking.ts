@@ -17,7 +17,6 @@ export function useHandTracking(enabled: boolean = true) {
     if (!enabled) return;
     
     setIsInitializing(true);
-    let video = videoRef.current;
     let landmarker: HandLandmarker | null = null;
     let stream: MediaStream | null = null;
     let animationFrameId: number;
@@ -43,13 +42,34 @@ export function useHandTracking(enabled: boolean = true) {
           video: { facingMode: 'user', width: 640, height: 480 } 
         });
         
+        const video = videoRef.current;
         if (video && mounted) {
           video.srcObject = stream;
           video.onloadeddata = () => {
-             video?.play();
+             video.play().catch(e => console.error("Video play failed:", e));
              setIsInitializing(false);
              detectFrame();
           }
+        } else {
+          // If video element is not yet attached to the DOM, poll for it
+          let attempts = 0;
+          const checkVideo = setInterval(() => {
+            attempts++;
+            const v = videoRef.current;
+            if (v && mounted) {
+              clearInterval(checkVideo);
+              v.srcObject = stream;
+              v.onloadeddata = () => {
+                 v.play().catch(e => console.error("Video play failed:", e));
+                 setIsInitializing(false);
+                 detectFrame();
+              }
+            } else if (attempts > 50 || !mounted) {
+              clearInterval(checkVideo);
+              setError("Unable to find video display element.");
+              setIsInitializing(false);
+            }
+          }, 100);
         }
       } catch (err: any) {
         console.error(err);
@@ -62,6 +82,7 @@ export function useHandTracking(enabled: boolean = true) {
 
     let lastVideoTime = -1;
     function detectFrame() {
+      const video = videoRef.current;
       if (!video || !landmarker || !mounted) return;
       
       if (video.currentTime !== lastVideoTime) {
@@ -107,7 +128,7 @@ export function useHandTracking(enabled: boolean = true) {
       if (stream) stream.getTracks().forEach(t => t.stop());
       if (landmarker) landmarker.close();
     };
-  }, []);
+  }, [enabled]);
 
   return { videoRef, isInitializing, error, handState };
 }
